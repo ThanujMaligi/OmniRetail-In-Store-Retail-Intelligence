@@ -143,3 +143,24 @@ class ShopperPoseAnalyzer:
         return "WALKWAY"
 
     def _detect_reach(
+        self,
+        l_wrist: Optional[Tuple[int, int]],
+        r_wrist: Optional[Tuple[int, int]],
+        zones: Dict[str, ZoneDefinition],
+        width: int,
+        height: int,
+    ) -> Optional[str]:
+        """Check if either wrist penetrates inside a shelf zone."""
+        wrists = [w for w in (l_wrist, r_wrist) if w is not None]
+        if not wrists:
+            return None
+
+        for z_name, zone in zones.items():
+            if not zone.is_shelf:
+                continue
+            x1, y1, x2, y2 = zone.get_pixel_rect(width, height)
+            for wx, wy in wrists:
+                if x1 <= wx <= x2 and y1 <= wy <= y2:
+                    return z_name
+
+        return None
