@@ -98,3 +98,53 @@ class RoleAndActionClassifier:
                     track_id=tid,
                     role=PersonRole.CUSTOMER,
                     current_action=DetailedAction.WALKING,
+                )
+
+            profile = self.profiles[tid]
+
+            # ------------------------------------------------------------------
+            # 1. Motion & Trajectory Analysis
+            # ------------------------------------------------------------------
+            if profile.last_center_pos is not None:
+                dx = cx - profile.last_center_pos[0]
+                dy = cy - profile.last_center_pos[1]
+                speed = np.sqrt(dx * dx + dy * dy)
+                if speed < 3.0:
+                    profile.stationary_frames += 1
+                else:
+                    profile.stationary_frames = max(0, profile.stationary_frames - 1)
+            profile.last_center_pos = (cx, cy)
+
+            # ------------------------------------------------------------------
+            # 2. Torso Uniform Color Variance Analysis
+            # ------------------------------------------------------------------
+            ty1 = int(y1 + 0.15 * bh)
+            ty2 = int(y1 + 0.45 * bh)
+            tx1 = int(x1 + 0.20 * bw)
+            tx2 = int(x2 - 0.20 * bw)
+
+            is_uniform_like = False
+            if ty2 > ty1 and tx2 > tx1 and ty1 >= 0 and ty2 <= h and tx1 >= 0 and tx2 <= w:
+                torso_roi = frame[ty1:ty2, tx1:tx2]
+                if torso_roi.size > 100:
+                    hsv = cv2.cvtColor(torso_roi, cv2.COLOR_BGR2HSV)
+                    h_std = float(np.std(hsv[:, :, 0]))
+                    s_std = float(np.std(hsv[:, :, 1]))
+                    if h_std < 14.0 and s_std < 35.0:
+                        is_uniform_like = True
+
+            # ------------------------------------------------------------------
+            # 3. Arm Reach & Physical Shelf Penetration Detection
+            # ------------------------------------------------------------------
+            is_reaching = False
+            reaching_zone_name = None
+
+            if pose is not None:
+                if pose.reaching_zone is not None:
+                    is_reaching = True
+                    reaching_zone_name = pose.reaching_zone
+                else:
+                    # Spatial reach heuristic: check if wrist extends outward toward shelf
+                    for wrist, shoulder in [(pose.left_wrist, pose.left_shoulder), (pose.right_wrist, pose.right_shoulder)]:
+                        if wrist and shoulder:
+                            arm_len = np.sqrt((wrist[0] - shoulder[0]) ** 2 + (wrist[1] - shoulder[1]) ** 2)
