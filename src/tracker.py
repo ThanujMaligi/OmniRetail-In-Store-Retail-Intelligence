@@ -33,3 +33,42 @@ class ShopperTracker:
         self.model = YOLO(model_path)
         self.confidence = confidence
         self.tracker = tracker
+
+    def track_frame(self, frame: np.ndarray) -> List[ShopperDetection]:
+        """
+        Run persistent tracking on an incoming video frame.
+        Filters strictly for person detections (class 0).
+        """
+        results = self.model.track(
+            source=frame,
+            persist=True,
+            tracker=self.tracker,
+            classes=[0],  # Person class
+            conf=self.confidence,
+            verbose=False,
+        )
+
+        detections: List[ShopperDetection] = []
+        if not results or len(results) == 0:
+            return detections
+
+        boxes = results[0].boxes
+        if boxes is None or boxes.id is None:
+            return detections
+
+        track_ids = boxes.id.int().cpu().tolist()
+        xyxy_coords = boxes.xyxy.int().cpu().tolist()
+        confs = boxes.conf.float().cpu().tolist()
+
+        for tid, box, conf in zip(track_ids, xyxy_coords, confs):
+            x1, y1, x2, y2 = box
+            foot_x = int((x1 + x2) / 2)
+            foot_y = int(y2)
+            detections.append(ShopperDetection(
+                track_id=int(tid),
+                bbox=(x1, y1, x2, y2),
+                confidence=float(conf),
+                foot_pos=(foot_x, foot_y),
+            ))
+
+        return detections
