@@ -95,3 +95,59 @@ class RetailConfig:
             is_shelf=True,
         ),
     })
+
+    def configure_for_video(self, video_path: str):
+        """Automatically optimize planogram zones based on camera angle & content."""
+        v_name = Path(video_path).name.lower()
+        if any(k in v_name for k in ("clean_grocery_picking", "shelf_pick", "clean_shopper")):
+            self.zones = {
+                "Walkway": ZoneDefinition(
+                    name="Shopper Walkway",
+                    x_min=0.0,
+                    y_min=0.0,
+                    x_max=0.38,
+                    y_max=1.0,
+                    color=(60, 180, 75),
+                    is_shelf=False,
+                ),
+                "Grocery_Shelf": ZoneDefinition(
+                    name="Packaged Goods & Beverages",
+                    x_min=0.38,
+                    y_min=0.0,
+                    x_max=1.0,
+                    y_max=1.0,
+                    color=(0, 140, 255),
+                    is_shelf=True,
+                ),
+            }
+        elif "staff_customer_cctv" in v_name or "aura" in v_name:
+            self.zones = {
+                "Shelf_Left": ZoneDefinition(
+                    name="Retail Shelf (Left)",
+                    x_min=0.0,
+                    y_min=0.0,
+                    x_max=0.32,
+                    y_max=1.0,
+                    color=(245, 130, 48),
+                    is_shelf=True,
+                ),
+                "Walkway": ZoneDefinition(
+                    name="Customer Walkway",
+                    x_min=0.32,
+                    y_min=0.0,
+                    x_max=0.68,
+                    y_max=1.0,
+                    color=(60, 180, 75),
+                    is_shelf=False,
+                ),
+                "Shelf_Right": ZoneDefinition(
+                    name="Aisle Display (Right)",
+                    x_min=0.68,
+                    y_min=0.0,
+                    x_max=1.0,
+                    y_max=1.0,
+                    color=(0, 130, 200),
+                    is_shelf=True,
+                ),
+            }
+
