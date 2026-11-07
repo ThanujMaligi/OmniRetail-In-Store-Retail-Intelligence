@@ -48,3 +48,38 @@ class ShopperPoseAnalyzer:
         """
         if not tracked_shoppers:
             return {}
+
+        results = self.model(frame, verbose=False, conf=self.confidence)
+        if not results or len(results) == 0:
+            return {}
+
+        res = results[0]
+        if res.keypoints is None or res.keypoints.xy is None or len(res.keypoints.xy) == 0:
+            return {}
+
+        pose_boxes = res.boxes.xyxy.cpu().numpy() if res.boxes is not None else []
+        keypoints_array = res.keypoints.xy.cpu().numpy()  # shape (N, 17, 2)
+        confs = res.keypoints.conf.cpu().numpy() if res.keypoints.conf is not None else None
+
+        pose_map: Dict[int, ShopperPose] = {}
+
+        # Match each tracked shopper to the closest pose detection via bounding box center
+        for shopper in tracked_shoppers:
+            best_idx = -1
+            best_dist = float("inf")
+            sx, sy = shopper.center_pos
+
+            for i, pbox in enumerate(pose_boxes):
+                px = (pbox[0] + pbox[2]) / 2
+                py = (pbox[1] + pbox[3]) / 2
+                dist = (sx - px) ** 2 + (sy - py) ** 2
+                if dist < best_dist:
+                    best_dist = dist
+                    best_idx = i
+
+            # Threshold distance to avoid assigning unmatched faraway poses (e.g., max 150 px)
+            if best_idx != -1 and best_dist < 15000 and best_idx < len(keypoints_array):
+                kpts = keypoints_array[best_idx]
+                kconfs = confs[best_idx] if confs is not None else np.ones(17)
+
+                def get_kpt(idx: int) -> Optional[Tuple[int, int]]:
