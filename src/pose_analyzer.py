@@ -118,3 +118,28 @@ class ShopperPoseAnalyzer:
         nose: Optional[Tuple[int, int]],
         l_shoulder: Optional[Tuple[int, int]],
         r_shoulder: Optional[Tuple[int, int]],
+    ) -> str:
+        """
+        Estimate whether the shopper's body/head is oriented toward the left shelf,
+        right shelf, or straight down the walkway.
+        """
+        if nose and l_shoulder and r_shoulder:
+            shoulder_mid_x = (l_shoulder[0] + r_shoulder[0]) / 2
+            diff = nose[0] - shoulder_mid_x
+            if diff < -12:
+                return "LEFT_SHELF"
+            elif diff > 12:
+                return "RIGHT_SHELF"
+            return "WALKWAY"
+
+        # Fallback if only nose or one shoulder is visible
+        if l_shoulder and r_shoulder:
+            # If left shoulder is significantly right of right shoulder or vice versa
+            shoulder_dx = r_shoulder[0] - l_shoulder[0]
+            if abs(shoulder_dx) < 15:
+                # Body profile side-facing
+                return "LEFT_SHELF" if shoulder_dx < 0 else "RIGHT_SHELF"
+
+        return "WALKWAY"
+
+    def _detect_reach(
