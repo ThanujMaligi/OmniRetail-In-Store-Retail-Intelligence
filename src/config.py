@@ -45,3 +45,53 @@ class ZoneDefinition:
         )
 
 
+@dataclass
+class RetailConfig:
+    """Master Configuration for the OmniRetail Engine."""
+    # Detection & Tracking Parameters
+    confidence_threshold: float = 0.25
+    iou_threshold: float = 0.45
+    tracker_type: str = "bytetrack.yaml"
+    target_class_id: int = 0  # Person in COCO
+
+    # Behavioral State Thresholds (in seconds)
+    dwell_browse_seconds: float = 2.0      # Dwell time to qualify as "Browsing / Engaged"
+    interaction_cooldown_frames: int = 15  # Cooldown between counting successive touches
+    reach_distance_threshold_px: int = 25  # Max distance from shelf boundary to trigger reach
+
+    # Heatmap Settings
+    heatmap_gaussian_sigma: int = 16
+    heatmap_alpha: float = 0.55
+
+    # Store Layout (Normalized 0.0 - 1.0)
+    # Default layout assumes an overhead or angled aisle camera:
+    # Left 35% = Left Shelf, Center 30% = Walkway, Right 35% = Right Shelf
+    zones: Dict[str, ZoneDefinition] = field(default_factory=lambda: {
+        "Shelf_Left": ZoneDefinition(
+            name="Snacks & Bakery (Left)",
+            x_min=0.0,
+            y_min=0.0,
+            x_max=0.35,
+            y_max=1.0,
+            color=(245, 130, 48),  # Coral / Orange
+            is_shelf=True,
+        ),
+        "Walkway": ZoneDefinition(
+            name="Central Walkway",
+            x_min=0.35,
+            y_min=0.0,
+            x_max=0.65,
+            y_max=1.0,
+            color=(60, 180, 75),  # Green
+            is_shelf=False,
+        ),
+        "Shelf_Right": ZoneDefinition(
+            name="Beverages & Dairy (Right)",
+            x_min=0.65,
+            y_min=0.0,
+            x_max=1.0,
+            y_max=1.0,
+            color=(0, 130, 200),  # Blue
+            is_shelf=True,
+        ),
+    })
