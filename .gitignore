@@ -1,0 +1,63 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Environments & virtualenvs
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Video files (raw streams & generated video outputs)
+*.mp4
+*.avi
+*.mov
+*.mkv
+data/raw_videos/
+data/output_analytics/*.mp4
+
+# Model weights
+models/*.pt
+*.pt
+*.onnx
+*.engine
+
+# Temporary debug images, crops & thumbnails
+data/*.jpg
+data/*.png
+!data/output_analytics/*.csv
+!data/output_analytics/*.json
+!data/output_analytics/*.png
+*thumbnail*
+video_thumbnail.jpg
+data/output_analytics/yolo26_architecture_breakdown.png
+data/output_analytics/yolo26_vs_competitors_infographic.png
+data/output_analytics/yolo26_system_architecture_diagram.png
+
+# Temporary & debug scratch scripts
+find_video.py
+inspect_tracks.py
+generate_thumbnail.py
+generate_diagram.py
+generate_infographic.py
+generate_real_architecture.py
+test_tbl.png
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE & OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+create_git_history.py
