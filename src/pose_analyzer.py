@@ -83,3 +83,38 @@ class ShopperPoseAnalyzer:
                 kconfs = confs[best_idx] if confs is not None else np.ones(17)
 
                 def get_kpt(idx: int) -> Optional[Tuple[int, int]]:
+                    if kconfs[idx] > 0.2 and (kpts[idx][0] > 0 or kpts[idx][1] > 0):
+                        return int(kpts[idx][0]), int(kpts[idx][1])
+                    return None
+
+                nose = get_kpt(0)
+                l_shoulder = get_kpt(5)
+                r_shoulder = get_kpt(6)
+                l_wrist = get_kpt(9)
+                r_wrist = get_kpt(10)
+
+                # Determine facing orientation
+                facing = self._estimate_facing(nose, l_shoulder, r_shoulder)
+
+                # Determine if either wrist is reaching into a shelf zone
+                h, w = frame.shape[:2]
+                reaching_zone = self._detect_reach(l_wrist, r_wrist, zones, w, h)
+
+                pose_map[shopper.track_id] = ShopperPose(
+                    track_id=shopper.track_id,
+                    left_wrist=l_wrist,
+                    right_wrist=r_wrist,
+                    nose=nose,
+                    left_shoulder=l_shoulder,
+                    right_shoulder=r_shoulder,
+                    facing=facing,
+                    reaching_zone=reaching_zone,
+                )
+
+        return pose_map
+
+    def _estimate_facing(
+        self,
+        nose: Optional[Tuple[int, int]],
+        l_shoulder: Optional[Tuple[int, int]],
+        r_shoulder: Optional[Tuple[int, int]],
