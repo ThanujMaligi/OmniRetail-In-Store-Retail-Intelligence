@@ -148,3 +148,43 @@ class RoleAndActionClassifier:
                     for wrist, shoulder in [(pose.left_wrist, pose.left_shoulder), (pose.right_wrist, pose.right_shoulder)]:
                         if wrist and shoulder:
                             arm_len = np.sqrt((wrist[0] - shoulder[0]) ** 2 + (wrist[1] - shoulder[1]) ** 2)
+                            if arm_len > 0.24 * bh:
+                                for z_name, zone in zones.items():
+                                    if zone.is_shelf:
+                                        zx1, zy1, zx2, zy2 = zone.get_pixel_rect(w, h)
+                                        if abs(wrist[0] - zx1) < 45 or abs(wrist[0] - zx2) < 45 or (zx1 <= wrist[0] <= zx2):
+                                            is_reaching = True
+                                            reaching_zone_name = z_name
+                                            break
+
+            # ------------------------------------------------------------------
+            # 4. State Machine: Pick vs. Inspect vs. Put-Back Cycle
+            # ------------------------------------------------------------------
+            if is_reaching:
+                profile.reach_frames_streak += 1
+                profile.shelf_zone_interacted = reaching_zone_name
+                profile.customer_evidence += 1.5
+
+                if profile.is_holding_item:
+                    # If already holding an item and reaching back into the shelf -> PUTTING BACK!
+                    profile.current_action = DetailedAction.PUT_BACK
+                    profile.in_retract_phase = True
+                else:
+                    # Extending hand into shelf to pick
+                    if profile.reach_frames_streak >= 4:
+                        profile.current_action = DetailedAction.REACHING
+                    if profile.reach_frames_streak >= 10:
+                        profile.current_action = DetailedAction.PICKED_ITEM
+                        profile.in_retract_phase = True
+            else:
+                # Retract Phase Evaluation: Hand just pulled back from the shelf!
+                if profile.in_retract_phase and profile.reach_frames_streak >= 6:
+                    if profile.is_holding_item:
+                        # ------------------------------------------------------
+                        # PUT-BACK CONFIRMED! (Returned product to shelf)
+                        # ------------------------------------------------------
+                        profile.items_putback_count += 1
+                        profile.is_holding_item = False
+                        profile.holding_item_frames = 0
+                        profile.items_taken_count = max(0, profile.items_picked_count - profile.items_putback_count)
+                        profile.current_action = DetailedAction.PUT_BACK
