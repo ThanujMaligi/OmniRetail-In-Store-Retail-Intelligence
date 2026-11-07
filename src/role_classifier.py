@@ -48,3 +48,53 @@ class PersonBehaviorProfile:
     holding_item_frames: int = 0
     reach_frames_streak: int = 0
     in_retract_phase: bool = False
+    shelf_zone_interacted: Optional[str] = None
+    role_confidence: float = 0.5
+    role_locked: bool = False
+
+    # Evidence accumulators
+    customer_evidence: float = 0.0
+    staff_evidence: float = 0.0
+
+    # Gait & dwell tracking
+    stationary_frames: int = 0
+    shelf_facing_frames: int = 0
+    walkway_frames: int = 0
+    last_center_pos: Optional[Tuple[int, int]] = None
+    last_reach_frame: int = -100
+    last_putback_frame: int = -100
+
+
+class RoleAndActionClassifier:
+    """
+    Multi-signal classifier separating customers from mart staff/supervisors,
+    and tracking complete Pick vs. Put-Back lifecycles.
+    """
+
+    def __init__(self):
+        self.profiles: Dict[int, PersonBehaviorProfile] = {}
+
+    def classify(
+        self,
+        frame_idx: int,
+        detections: List[ShopperDetection],
+        poses: Dict[int, ShopperPose],
+        zones: Dict[str, ZoneDefinition],
+        frame: np.ndarray,
+    ) -> Dict[int, PersonBehaviorProfile]:
+        """Classify each tracked person in the current frame."""
+        h, w = frame.shape[:2]
+
+        for det in detections:
+            tid = det.track_id
+            pose = poses.get(tid)
+            x1, y1, x2, y2 = det.bbox
+            bw = x2 - x1
+            bh = y2 - y1
+            cx, cy = det.center_pos
+
+            if tid not in self.profiles:
+                self.profiles[tid] = PersonBehaviorProfile(
+                    track_id=tid,
+                    role=PersonRole.CUSTOMER,
+                    current_action=DetailedAction.WALKING,
