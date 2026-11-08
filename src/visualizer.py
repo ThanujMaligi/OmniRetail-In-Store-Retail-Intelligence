@@ -178,3 +178,83 @@ class RetailVisualizer:
             act_color = (255, 200, 50)
             took_str = "TOOK: NO"
         else:
+            act_str = "WALKING"
+            act_color = (200, 200, 200)
+            took_str = "TOOK: NO (Returned)" if putbacks > 0 else "TOOK: NO"
+
+        # Override took_str if net item is confirmed taken away
+        if net_taken > 0 and not is_holding and action != DetailedAction.PUT_BACK:
+            took_str = f"TOOK: YES ({net_taken})"
+
+        line1 = f"#{tid} [{role_title}]"
+        line2 = f"{act_str} | {took_str}"
+
+        # Dynamic size
+        chip_w = 208
+        chip_h = 32
+
+        # Position above head, or below feet if near top edge
+        chip_x = max(4, min(self.width - chip_w - 4, x1))
+        if y1 - chip_h - 6 > 36:
+            chip_y = y1 - chip_h - 6
+        else:
+            chip_y = min(self.height - chip_h - 4, y2 + 6)
+
+        # Semi-transparent glass pill background
+        roi = frame[chip_y : chip_y + chip_h, chip_x : chip_x + chip_w]
+        if roi.shape[0] == chip_h and roi.shape[1] == chip_w:
+            pill = roi.copy()
+            cv2.rectangle(pill, (0, 0), (chip_w, chip_h), COLOR_GLASS_BG, -1)
+            cv2.addWeighted(pill, 0.85, roi, 0.15, 0, roi)
+
+            # Left accent color stripe
+            cv2.rectangle(frame, (chip_x, chip_y), (chip_x + 3, chip_y + chip_h), accent_color, -1)
+            # Thin border outline
+            cv2.rectangle(frame, (chip_x, chip_y), (chip_x + chip_w, chip_y + chip_h), (50, 50, 60), 1)
+
+            # Text render
+            cv2.putText(frame, line1, (chip_x + 8, chip_y + 13), cv2.FONT_HERSHEY_SIMPLEX, 0.35, accent_color, 1, cv2.LINE_AA)
+            cv2.putText(frame, line2, (chip_x + 8, chip_y + 26), cv2.FONT_HERSHEY_SIMPLEX, 0.30, act_color, 1, cv2.LINE_AA)
+
+    def _draw_zones(self, frame: np.ndarray):
+        """Draw subtle, non-intrusive shelf zone boundaries (NO opaque color fills!)."""
+        for _, zone in self.config.zones.items():
+            if zone.is_shelf:
+                x1, y1, x2, y2 = zone.get_pixel_rect(self.width, self.height)
+                # Thin 1px outline
+                cv2.rectangle(frame, (x1, y1), (x2, y2), zone.color, 1)
+
+                # Shelf marker chip at the bottom
+                badge_w = 180
+                badge_h = 20
+                badge_x = min(self.width - badge_w - 6, max(x1 + 6, 6))
+                badge_y = max(y1 + 6, self.height - badge_h - 8)
+
+                cv2.rectangle(frame, (badge_x, badge_y), (badge_x + badge_w, badge_y + badge_h), (20, 20, 24), -1)
+                cv2.rectangle(frame, (badge_x, badge_y), (badge_x + badge_w, badge_y + badge_h), zone.color, 1)
+                cv2.putText(
+                    frame,
+                    f"SHELF: {zone.name[:20]}",
+                    (badge_x + 6, badge_y + 14),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.32,
+                    zone.color,
+                    1,
+                    cv2.LINE_AA,
+                )
+
+    def _draw_trajectories(self, frame: np.ndarray, engine: RetailAnalyticsEngine):
+        """Draw breadcrumb trails for each active shopper."""
+        for session in engine.sessions.values():
+            pts = session.trajectories[-20:]
+            if len(pts) > 1:
+                for i in range(1, len(pts)):
+                    alpha = int(80 + 150 * (i / len(pts)))
+                    color = (alpha, alpha, alpha)
+                    cv2.line(frame, pts[i - 1], pts[i], color, 1, cv2.LINE_AA)
+
+    def _draw_pose_interaction(
+        self,
+        frame: np.ndarray,
+        pose: ShopperPose,
+        action: DetailedAction,
