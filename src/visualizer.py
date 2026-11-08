@@ -98,3 +98,83 @@ class RetailVisualizer:
         vis = self._draw_top_hud(vis, engine, profiles, fps_current)
 
         return vis
+
+    def _draw_corner_brackets(
+        self,
+        frame: np.ndarray,
+        x1: int,
+        y1: int,
+        x2: int,
+        y2: int,
+        color: Tuple[int, int, int],
+        thickness: int = 2,
+    ):
+        """Draw sleek, high-tech corner brackets around the person."""
+        bw = x2 - x1
+        bh = y2 - y1
+        corner_len = max(8, min(18, bw // 4, bh // 4))
+
+        # Top-left
+        cv2.line(frame, (x1, y1), (x1 + corner_len, y1), color, thickness, cv2.LINE_AA)
+        cv2.line(frame, (x1, y1), (x1, y1 + corner_len), color, thickness, cv2.LINE_AA)
+
+        # Top-right
+        cv2.line(frame, (x2, y1), (x2 - corner_len, y1), color, thickness, cv2.LINE_AA)
+        cv2.line(frame, (x2, y1), (x2, y1 + corner_len), color, thickness, cv2.LINE_AA)
+
+        # Bottom-left
+        cv2.line(frame, (x1, y2), (x1 + corner_len, y2), color, thickness, cv2.LINE_AA)
+        cv2.line(frame, (x1, y2), (x1, y2 - corner_len), color, thickness, cv2.LINE_AA)
+
+        # Bottom-right
+        cv2.line(frame, (x2, y2), (x2 - corner_len, y2), color, thickness, cv2.LINE_AA)
+        cv2.line(frame, (x2, y2), (x2, y2 - corner_len), color, thickness, cv2.LINE_AA)
+
+        # Faint dashed/thin border linking corners for context
+        cv2.rectangle(frame, (x1, y1), (x2, y2), (color[0] // 3, color[1] // 3, color[2] // 3), 1)
+
+    def _draw_compact_chip(
+        self,
+        frame: np.ndarray,
+        x1: int,
+        y1: int,
+        x2: int,
+        y2: int,
+        tid: int,
+        role: PersonRole,
+        action: DetailedAction,
+        picks: int,
+        putbacks: int,
+        net_taken: int,
+        is_holding: bool,
+        accent_color: Tuple[int, int, int],
+    ):
+        """Draw an ultra-compact, non-intrusive 2-tier HUD pill showing Pick vs. Put-Back."""
+        role_title = "CUSTOMER" if role == PersonRole.CUSTOMER else "MART STAFF"
+
+        # Action tag text & color
+        if action == DetailedAction.PUT_BACK:
+            act_str = "PUT BACK ON SHELF"
+            act_color = (60, 220, 255)       # Amber Gold
+            took_str = "TOOK: NO (Returned)"
+        elif action == DetailedAction.INSPECTING_ITEM:
+            act_str = "INSPECTING PRODUCT"
+            act_color = (0, 215, 255)        # Light Amber
+            took_str = "HELD IN HAND"
+        elif action == DetailedAction.PICKED_ITEM:
+            act_str = "PICKED FROM SHELF"
+            act_color = (40, 60, 255)        # Bright Alert
+            took_str = f"Picks: {picks}"
+        elif action == DetailedAction.REACHING:
+            act_str = "REACHING FOR SHELF"
+            act_color = (0, 160, 255)        # Orange
+            took_str = "TOOK: NO"
+        elif action == DetailedAction.BROWSING:
+            act_str = "BROWSING SHELF"
+            act_color = (0, 220, 255)
+            took_str = "TOOK: NO (Returned)" if putbacks > 0 else "TOOK: NO"
+        elif action == DetailedAction.MONITORING:
+            act_str = "MONITORING AISLE"
+            act_color = (255, 200, 50)
+            took_str = "TOOK: NO"
+        else:
