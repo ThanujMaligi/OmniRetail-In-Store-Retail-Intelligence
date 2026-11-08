@@ -208,3 +208,18 @@ class RoleAndActionClassifier:
                     profile.reach_frames_streak = 0
 
                     # If recently put back, linger "PUT BACK ON SHELF" for 60 frames so viewer sees it clearly
+                    if frame_idx - profile.last_putback_frame < 60:
+                        profile.current_action = DetailedAction.PUT_BACK
+                    elif profile.is_holding_item:
+                        profile.holding_item_frames += 1
+                        profile.current_action = DetailedAction.INSPECTING_ITEM
+                    elif pose and "SHELF" in pose.facing:
+                        profile.shelf_facing_frames += 1
+                        profile.current_action = DetailedAction.BROWSING
+                        profile.customer_evidence += 0.4
+                    else:
+                        profile.walkway_frames += 1
+                        if profile.role == PersonRole.SUPERVISOR:
+                            profile.current_action = DetailedAction.MONITORING
+                        else:
+                            profile.current_action = DetailedAction.WALKING
