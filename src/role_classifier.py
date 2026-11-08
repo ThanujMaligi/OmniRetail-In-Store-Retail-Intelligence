@@ -223,3 +223,18 @@ class RoleAndActionClassifier:
                             profile.current_action = DetailedAction.MONITORING
                         else:
                             profile.current_action = DetailedAction.WALKING
+
+            # Net item update
+            profile.items_taken_count = max(0, profile.items_picked_count - profile.items_putback_count)
+
+            # ------------------------------------------------------------------
+            # 5. Role Evidence Fusion (Customer vs Staff)
+            # ------------------------------------------------------------------
+            if is_uniform_like and profile.items_picked_count == 0 and profile.reach_frames_streak == 0:
+                profile.staff_evidence += 0.6
+
+            if profile.stationary_frames > 45 and profile.items_picked_count == 0 and profile.shelf_facing_frames < 10:
+                profile.staff_evidence += 0.8
+
+            if not profile.role_locked:
+                if profile.items_picked_count > 0 or profile.reach_frames_streak > 3:
