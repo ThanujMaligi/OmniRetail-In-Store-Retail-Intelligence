@@ -108,3 +108,118 @@ def main():
         """, unsafe_allow_html=True)
 
     with col3:
+        st.markdown(f"""
+        <div class="metric-card" style="border-left-color: #e69500;">
+            <div class="metric-title">Put-Backs (Returned)</div>
+            <div class="metric-value">{total_putbacks}</div>
+            <div class="sub-note">Kept Back on Shelf</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col4:
+        st.markdown(f"""
+        <div class="metric-card" style="border-left-color: #28a745;">
+            <div class="metric-title">Net Items Taken</div>
+            <div class="metric-value">{net_taken}</div>
+            <div class="sub-note">{'Carted / Bought' if net_taken > 0 else 'Zero (Returned)'}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col5:
+        st.markdown(f"""
+        <div class="metric-card" style="border-left-color: #6f42c1;">
+            <div class="metric-title">Average Dwell Time</div>
+            <div class="metric-value">{kpis['avg_dwell_seconds']}s</div>
+            <div class="sub-note">Per Shopper Session</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.write("")
+
+    # Dashboard Tabs
+    tab1, tab2, tab3, tab4 = st.tabs([
+        "📊 Conversion Funnel & Zones",
+        "🔥 Traffic & Dwell Heatmap",
+        "👥 Customer Journey Logs",
+        "🎥 Video Playback & HUD",
+    ])
+
+    # TAB 1: Conversion Funnel & Zones
+    with tab1:
+        st.subheader("Aisle Conversion & Planogram Performance")
+        fcol1, fcol2 = st.columns([1, 1])
+
+        with fcol1:
+            st.markdown("##### 🛒 Shopper Conversion Funnel")
+            funnel_img_path = OUTPUT_DIR / "conversion_funnel.png"
+            if funnel_img_path.exists():
+                st.image(str(funnel_img_path), width="stretch")
+            else:
+                st.info("Funnel chart not generated yet.")
+
+        with fcol2:
+            st.markdown("##### 📍 Shelf Zone Breakdown")
+            zone_data = []
+            for z_name, z_info in kpis["zone_stats"].items():
+                zone_data.append({
+                    "Zone": z_info["name"],
+                    "Shelf?": "Yes" if z_info["is_shelf"] else "Walkway",
+                    "Visitors": z_info["unique_visitors"],
+                    "Avg Dwell (s)": z_info["avg_dwell_sec"],
+                    "Total Dwell (s)": z_info["total_dwell_sec"],
+                    "Interactions (Picks)": z_info["interactions"],
+                })
+            df_zones = pd.DataFrame(zone_data)
+            st.dataframe(df_zones, width="stretch", hide_index=True)
+
+            # Zone Dwell comparison bar chart
+            st.bar_chart(df_zones.set_index("Zone")["Avg Dwell (s)"], height=230)
+
+    # TAB 2: Traffic & Dwell Heatmap
+    with tab2:
+        st.subheader("Store Traffic & Dwell-Time Heatmap")
+        st.write("Overhead spatial density representation showing hot zones where shoppers linger most:")
+        heatmap_img_path = OUTPUT_DIR / "aisle_heatmap.png"
+        if heatmap_img_path.exists():
+            st.image(str(heatmap_img_path), caption="Aisle Density Heatmap (Red = High Dwell, Blue = Low)", width="stretch")
+        else:
+            st.info("Heatmap not found.")
+
+    # TAB 3: Individual Customer Journeys
+    with tab3:
+        st.subheader("Shopper Session Log & Behavioral States")
+        scol1, scol2 = st.columns(2)
+        with scol1:
+            selected_state = st.selectbox(
+                "Filter by Highest State:",
+                ["ALL", "INTERACTING", "BROWSING", "PASSING"],
+            )
+        with scol2:
+            shelves = ["ALL"] + [z for z in sessions["primary_shelf"].unique() if z != "None"]
+            selected_shelf = st.selectbox("Filter by Primary Shelf:", shelves)
+
+        filtered_df = sessions.copy()
+        if selected_state != "ALL":
+            filtered_df = filtered_df[filtered_df["highest_state"] == selected_state]
+        if selected_shelf != "ALL":
+            filtered_df = filtered_df[filtered_df["primary_shelf"] == selected_shelf]
+
+        st.dataframe(filtered_df, width="stretch", hide_index=True)
+
+    # TAB 4: Video Playback
+    with tab4:
+        st.subheader("Annotated Video Stream & HUD Overlay")
+        mp4_files = sorted(list(OUTPUT_DIR.glob("*.mp4")))
+        if mp4_files:
+            file_options = {p.name: p for p in mp4_files}
+            default_key = "annotated_retail_analysis.mp4" if "annotated_retail_analysis.mp4" in file_options else list(file_options.keys())[0]
+            selected_file = st.selectbox("Select Annotated Video to Watch:", list(file_options.keys()), index=list(file_options.keys()).index(default_key))
+            video_out_path = file_options[selected_file]
+            st.video(str(video_out_path))
+            st.caption(f"📁 Video Location: `{video_out_path}`")
+        else:
+            st.info("Annotated video not found. Run `python main.py` with `--save-video` to generate it.")
+
+
+if __name__ == "__main__":
+    main()
