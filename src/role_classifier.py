@@ -188,3 +188,23 @@ class RoleAndActionClassifier:
                         profile.holding_item_frames = 0
                         profile.items_taken_count = max(0, profile.items_picked_count - profile.items_putback_count)
                         profile.current_action = DetailedAction.PUT_BACK
+                        profile.last_putback_frame = frame_idx
+                    else:
+                        # ------------------------------------------------------
+                        # ITEM PICK CONFIRMED! (Lifted product from shelf)
+                        # ------------------------------------------------------
+                        profile.items_picked_count += 1
+                        profile.is_holding_item = True
+                        profile.holding_item_frames = 1
+                        profile.items_taken_count = max(0, profile.items_picked_count - profile.items_putback_count)
+                        profile.current_action = DetailedAction.PICKED_ITEM
+                        profile.last_reach_frame = frame_idx
+
+                    profile.customer_evidence += 30.0
+                    profile.role_locked = True
+                    profile.in_retract_phase = False
+                    profile.reach_frames_streak = 0
+                else:
+                    profile.reach_frames_streak = 0
+
+                    # If recently put back, linger "PUT BACK ON SHELF" for 60 frames so viewer sees it clearly
