@@ -1,0 +1,25 @@
+{
+  "total_footfall": 1,
+  "engaged_browsers": 1,
+  "shelf_interactors": 1,
+  "conversion_rate_pct": 100.0,
+  "avg_dwell_seconds": 15.0,
+  "zone_stats": {
+    "Walkway": {
+      "name": "Shopper Walkway",
+      "is_shelf": false,
+      "unique_visitors": 1,
+      "total_dwell_sec": 15.0,
+      "avg_dwell_sec": 15.0,
+      "interactions": 0
+    },
+    "Grocery_Shelf": {
+      "name": "Packaged Goods & Beverages",
+      "is_shelf": true,
+      "unique_visitors": 0,
+      "total_dwell_sec": 0.0,
+      "avg_dwell_sec": 0.0,
+      "interactions": 14
+    }
+  }
+}

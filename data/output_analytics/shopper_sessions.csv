@@ -1,0 +1,2 @@
+shopper_id,role,action,items_picked,items_put_back,net_items_taken,took_item,first_frame,last_frame,total_duration_sec,highest_state,primary_shelf,interactions_count
+1,CUSTOMER,PICKED ITEM FROM SHELF,2,2,0,NO (Put back / Returned),0,899,15.0,INTERACTING,Grocery_Shelf,14
