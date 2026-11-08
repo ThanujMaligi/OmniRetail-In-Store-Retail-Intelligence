@@ -258,3 +258,78 @@ class RetailVisualizer:
         frame: np.ndarray,
         pose: ShopperPose,
         action: DetailedAction,
+    ):
+        """Highlight arms and reaching vectors with laser indicators."""
+        is_picking = action in (DetailedAction.REACHING, DetailedAction.PICKED_ITEM, DetailedAction.PUT_BACK)
+
+        for wrist, shoulder in [(pose.left_wrist, pose.left_shoulder), (pose.right_wrist, pose.right_shoulder)]:
+            if wrist:
+                # Arm vector line
+                if shoulder:
+                    arm_color = COLOR_PICK_ALERT if is_picking else (220, 220, 220)
+                    cv2.line(frame, shoulder, wrist, arm_color, 2 if is_picking else 1, cv2.LINE_AA)
+
+                # Wrist laser dot
+                dot_color = (0, 255, 255) if is_picking else (180, 180, 180)
+                cv2.circle(frame, wrist, 3, dot_color, -1, cv2.LINE_AA)
+
+                if is_picking:
+                    cv2.circle(frame, wrist, 7, COLOR_PICK_ALERT, 2, cv2.LINE_AA)
+
+    def _draw_top_hud(
+        self,
+        frame: np.ndarray,
+        engine: RetailAnalyticsEngine,
+        profiles: Optional[Dict[int, PersonBehaviorProfile]],
+        fps: float,
+    ) -> np.ndarray:
+        """Top executive glass HUD banner with real-time conversion and role metrics."""
+        kpis = engine.get_kpis()
+        hud_h = 32
+
+        # Count roles & items
+        customers = 0
+        staff = 0
+        total_picks = 0
+        total_putbacks = 0
+        net_taken = 0
+        if profiles:
+            for p in profiles.values():
+                if p.role == PersonRole.CUSTOMER:
+                    customers += 1
+                elif p.role == PersonRole.SUPERVISOR:
+                    staff += 1
+                total_picks += p.items_picked_count
+                total_putbacks += p.items_putback_count
+                net_taken += p.items_taken_count
+
+        # Semi-transparent dark glass header
+        roi = frame[:hud_h, :]
+        glass = roi.copy()
+        cv2.rectangle(glass, (0, 0), (self.width, hud_h), (18, 18, 22), -1)
+        cv2.addWeighted(glass, 0.85, roi, 0.15, 0, roi)
+        cv2.line(frame, (0, hud_h), (self.width, hud_h), (60, 60, 70), 1)
+
+        # Conversion display text
+        conv_text = f"{kpis['conversion_rate_pct']}%"
+        if total_putbacks > 0 and net_taken == 0:
+            conv_text = "0% (Returned)"
+
+        # KPI labels
+        metrics = [
+            ("CUSTOMERS", f"{customers}", COLOR_CUSTOMER),
+            ("MART STAFF", f"{staff}", COLOR_STAFF),
+            ("SHELF PICKS", f"{total_picks}", (40, 160, 255) if total_picks > 0 else (180, 180, 180)),
+            ("PUT-BACKS", f"{total_putbacks}", (0, 215, 255) if total_putbacks > 0 else (180, 180, 180)),
+            ("NET TOOK", f"{net_taken}", COLOR_PICK_ALERT if net_taken > 0 else (100, 225, 100)),
+            ("CONVERSION", conv_text, COLOR_CUSTOMER if net_taken > 0 else (180, 180, 180)),
+            ("ENGINE", "YOLO26-Edge", (160, 160, 170)),
+        ]
+
+        spacing = self.width // len(metrics)
+        for i, (title, val, color) in enumerate(metrics):
+            x = i * spacing + 12
+            cv2.putText(frame, title, (x, 12), cv2.FONT_HERSHEY_SIMPLEX, 0.28, (140, 140, 150), 1, cv2.LINE_AA)
+            cv2.putText(frame, val, (x, 26), cv2.FONT_HERSHEY_SIMPLEX, 0.42, color, 1, cv2.LINE_AA)
+
+        return frame
