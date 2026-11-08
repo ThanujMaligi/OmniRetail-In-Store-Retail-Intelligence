@@ -248,3 +248,7 @@ class RoleAndActionClassifier:
             total_ev = max(1.0, profile.customer_evidence + profile.staff_evidence)
             if profile.role == PersonRole.CUSTOMER:
                 profile.role_confidence = min(0.99, max(0.70, profile.customer_evidence / total_ev))
+            else:
+                profile.role_confidence = min(0.99, max(0.70, profile.staff_evidence / total_ev))
+
+        return self.profiles
