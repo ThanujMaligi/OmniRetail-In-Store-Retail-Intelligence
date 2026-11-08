@@ -88,3 +88,42 @@ class RetailReporter:
 
     def export_heatmap_image(self, engine: RetailAnalyticsEngine, reference_frame: np.ndarray) -> Path:
         """Save high-resolution shopper dwell heatmap."""
+        heatmap_overlay = engine.generate_heatmap_overlay(reference_frame)
+        heatmap_path = self.output_dir / "aisle_heatmap.png"
+        cv2.imwrite(str(heatmap_path), heatmap_overlay)
+        return heatmap_path
+
+    def export_conversion_funnel(self, engine: RetailAnalyticsEngine) -> Path:
+        """Generate conversion funnel chart."""
+        kpis = engine.get_kpis()
+        stages = ["Total Footfall", "Engaged Browsers", "Shelf Interactors"]
+        values = [
+            kpis["total_footfall"],
+            kpis["engaged_browsers"],
+            kpis["shelf_interactors"],
+        ]
+
+        plt.figure(figsize=(7, 4.2), dpi=150)
+        plt.style.use("seaborn-v0_8-whitegrid" if "seaborn-v0_8-whitegrid" in plt.style.available else "default")
+
+        colors = ["#2b5c8f", "#e69500", "#d9381e"]
+        bars = plt.barh(stages[::-1], values[::-1], color=colors[::-1], height=0.55)
+
+        for bar in bars:
+            w = bar.get_width()
+            plt.text(
+                w + (max(values) * 0.02 if max(values) > 0 else 0.5),
+                bar.get_y() + bar.get_height() / 2,
+                f"{int(w)}",
+                va="center", ha="left", fontsize=10, fontweight="bold",
+            )
+
+        conv_pct = kpis["conversion_rate_pct"]
+        plt.title(f"Aisle Conversion Funnel | Physical Touch Rate: {conv_pct}%", fontsize=12, fontweight="bold")
+        plt.xlabel("Shopper Count", fontsize=10)
+        plt.tight_layout()
+
+        funnel_path = self.output_dir / "conversion_funnel.png"
+        plt.savefig(funnel_path)
+        plt.close()
+        return funnel_path
