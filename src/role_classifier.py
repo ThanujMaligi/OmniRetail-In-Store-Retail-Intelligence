@@ -238,3 +238,13 @@ class RoleAndActionClassifier:
 
             if not profile.role_locked:
                 if profile.items_picked_count > 0 or profile.reach_frames_streak > 3:
+                    profile.role = PersonRole.CUSTOMER
+                    profile.role_locked = True
+                elif profile.staff_evidence > (profile.customer_evidence + 8.0):
+                    profile.role = PersonRole.SUPERVISOR
+                else:
+                    profile.role = PersonRole.CUSTOMER
+
+            total_ev = max(1.0, profile.customer_evidence + profile.staff_evidence)
+            if profile.role == PersonRole.CUSTOMER:
+                profile.role_confidence = min(0.99, max(0.70, profile.customer_evidence / total_ev))
